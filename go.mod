@@ -1,4 +1,4 @@
-module ling_prog_jogo2
+module main
 
 go 1.19
 
