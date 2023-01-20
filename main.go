@@ -6,12 +6,10 @@ import (
 )
 
 func run() {
-	cfg := pixelgl.WindowConfig{
+	start(pixelgl.WindowConfig{
 		Title:  "Xandy D'Moraes Simulator",
 		Bounds: pixel.R(0, 0, 1024, 768),
-		VSync:  true,
-	}
-	gamecontroller.start(gamecontroller{cfg: cfg})
+	})
 }
 
 func main() {
