@@ -18,7 +18,7 @@ func setDebugWindow(win *pixelgl.Window) {
 
 func displayDebug(info string, y int) {
 
-	txtBox := text.New(pixel.V(10, float64(800+(y*15))), debugAtlas)
+	txtBox := text.New(pixel.V(10, float64(800-(y*15))), debugAtlas)
 	txtBox.Color = colornames.Black
 	txtBox.WriteString(info)
 	txtBox.Draw(surface, pixel.IM)

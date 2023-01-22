@@ -17,7 +17,29 @@ import (
 var (
 	face      = loadTTF("fonts/upheavtt.ttf", 20)
 	textAtlas = text.NewAtlas(face, text.ASCII, text.RangeTable(unicode.Latin))
+	//	fragmentShader = `
+	//#version 330 core
+	//in vec2  vTexCoords;
+	//out vec4 fragColor;
+	//uniform vec4 uTexBounds;
+	//uniform sampler2D uTexture;
+	//void main() {
+	//	vec2 t = (vTexCoords - uTexBounds.xy) / uTexBounds.zw;
+	//	// Sum our 3 color channels
+	//	float sum  = texture(uTexture, t).r;
+	//	      sum += texture(uTexture, t).g;
+	//	      sum += texture(uTexture, t).b;
+	//	// Divide by 3, and set the output to the result
+	//	vec4 color = vec4( 0.1, 0.2, 0.5, 1.0);
+	//	fragColor = color;
+	//}
+	//`
 )
+
+type clickableTxtBox struct {
+	txtBox *text.Text
+	click  bool
+}
 
 func makeTextBox(txtFileName string, leftBottomVertice pixel.Vec, RightUpperVertice pixel.Vec) (*text.Text, *imdraw.IMDraw) {
 
@@ -70,6 +92,23 @@ func makeMultiTextBox(txtFileName string, leftBottomVertice pixel.Vec, RightUppe
 	}
 
 	return txtBoxes, txtRectangle
+}
+
+func makeClickable(txtBoxes []*text.Text) []clickableTxtBox {
+
+	var clickableTxtBoxes []clickableTxtBox
+
+	for _, txtBox := range txtBoxes {
+		x := clickableTxtBox{txtBox: txtBox, click: false}
+		clickableTxtBoxes = append(clickableTxtBoxes, x)
+	}
+
+	return clickableTxtBoxes
+}
+
+func makeMultiClickTextBox(txtFileName string, leftBottomVertice pixel.Vec, RightUpperVertice pixel.Vec) ([]clickableTxtBox, *imdraw.IMDraw) {
+	txtBoxes, txtRectangle := makeMultiTextBox(txtFileName, leftBottomVertice, RightUpperVertice)
+	return makeClickable(txtBoxes), txtRectangle
 }
 
 func loadTTF(path string, size float64) font.Face {
