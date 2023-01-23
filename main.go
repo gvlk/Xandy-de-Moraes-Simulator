@@ -9,7 +9,7 @@ func run() {
 	win, _ := pixelgl.NewWindow(
 		pixelgl.WindowConfig{
 			Title:  "Xandy D'Moraes Simulator",
-			Bounds: pixel.R(0, 0, 1024, 768),
+			Bounds: pixel.R(0, 0, 1500, 843),
 		})
 	gameControl(win)
 }
