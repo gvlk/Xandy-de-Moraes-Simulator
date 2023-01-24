@@ -14,7 +14,7 @@ var (
 func run() {
 	win, _ := pixelgl.NewWindow(
 		pixelgl.WindowConfig{
-			Title:       "Xandy D'Moraes Simulator",
+			Title:       "Xandy Moraes Simulator",
 			Bounds:      pixel.R(0, 0, sWidth, sHeight),
 			Undecorated: true,
 			Icon:        []pixel.Picture{icon},
