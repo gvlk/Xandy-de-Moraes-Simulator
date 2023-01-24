@@ -18,6 +18,8 @@ var (
 	textAtlas38pt = text.NewAtlas(face38pt, text.ASCII, text.RangeTable(unicode.Latin))
 	face24pt      = loadTTF("fonts/upheavtt.ttf", 24)
 	textAtlas24pt = text.NewAtlas(face24pt, text.ASCII, text.RangeTable(unicode.Latin))
+	face70pt      = loadTTF("fonts/upheavtt.ttf", 70)
+	textAtlas70pt = text.NewAtlas(face70pt, text.ASCII, text.RangeTable(unicode.Latin))
 )
 
 const padding = 25
@@ -38,11 +40,18 @@ type propositionBoxes struct {
 }
 
 type clickableTxtBox struct {
-	txtBox *text.Text
-	click  bool
+	txtStates [2]*text.Text
+	state     *text.Text
+	click     bool
+	trueProp  bool
 }
 
-func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) standardTxtBox {
+func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) (standardTxtBox, bool) {
+
+	var (
+		guilty = true
+		ni     = false
+	)
 
 	textBorder := imdraw.New(nil)
 	textBorder.Color = colornames.Darkgrey
@@ -63,7 +72,6 @@ func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) standardTxtBo
 	textBox := text.New(pixel.V(min.X+padding, max.Y-textAtlas38pt.LineHeight()), textAtlas38pt)
 	textBox.Color = colornames.Black
 
-	ni := false
 	for i, word := range words {
 		switch word {
 		case ";nl":
@@ -76,6 +84,11 @@ func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) standardTxtBo
 			} else {
 				ni = false
 			}
+			continue
+		case ";c":
+			continue
+		case ";i":
+			guilty = false
 			continue
 		default:
 			if textBox.Dot.X+textBox.BoundsOf(words[i]).W() > max.X-padding {
@@ -94,15 +107,18 @@ func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) standardTxtBo
 		border: textBorder,
 		bg:     textBG,
 		rect:   pixel.R(min.X, min.Y, max.X, max.Y),
-	}
+	}, guilty
 }
 
 func makePropositionBox(propositions [][]string, min pixel.Vec, max pixel.Vec) ([]clickableTxtBox, *imdraw.IMDraw) {
 
 	var (
-		boxBorder *imdraw.IMDraw
-		textBoxes []clickableTxtBox
-		linesUsed = 1.0
+		boxBorder   *imdraw.IMDraw
+		mainTextBox *text.Text
+		secuTextBox *text.Text
+		textBoxes   []clickableTxtBox
+		linesUsed   = 1.0
+		trueProp    = false
 	)
 
 	boxBorder = imdraw.New(nil)
@@ -111,17 +127,32 @@ func makePropositionBox(propositions [][]string, min pixel.Vec, max pixel.Vec) (
 	boxBorder.Rectangle(5)
 
 	for _, proposition := range propositions {
-		textBox := text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas24pt.LineHeight())), textAtlas24pt)
-		textBox.Color = colornames.Black
+		mainTextBox = text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas24pt.LineHeight())), textAtlas24pt)
+		secuTextBox = text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas24pt.LineHeight())), textAtlas24pt)
+		mainTextBox.Color = colornames.Black
+		secuTextBox.Color = colornames.Orangered
 		for j, word := range proposition {
-			if textBox.Dot.X+textBox.BoundsOf(proposition[j]).W() > max.X-padding {
-				textBox.WriteString("\n")
+			if word == ";t" {
+				trueProp = true
+				continue
+			}
+			if mainTextBox.Dot.X+mainTextBox.BoundsOf(proposition[j]).W() > max.X-padding {
+				mainTextBox.WriteString("\n")
+				secuTextBox.WriteString("\n")
 				linesUsed++
 			}
-			textBox.WriteString(word + " ")
+			mainTextBox.WriteString(word + " ")
+			secuTextBox.WriteString(word + " ")
 		}
-		textBoxes = append(textBoxes, clickableTxtBox{txtBox: textBox, click: false})
+		linesUsed += 0.3
+		textBoxes = append(textBoxes, clickableTxtBox{
+			txtStates: [2]*text.Text{mainTextBox, secuTextBox},
+			state:     mainTextBox,
+			click:     false,
+			trueProp:  trueProp,
+		})
 		linesUsed++
+		trueProp = false
 	}
 	return textBoxes, boxBorder
 }
@@ -163,8 +194,8 @@ func makePropositionBoxes(txtFileName string) propositionBoxes {
 		}
 	}
 
-	atkBoxes, atkBorder := makePropositionBox(atk, pixel.V(40, 400), pixel.V(580, 670))
-	defBoxes, defBorder := makePropositionBox(def, pixel.V(895, 400), pixel.V(1435, 670))
+	atkBoxes, atkBorder := makePropositionBox(atk, pixel.V(40, 360), pixel.V(580, 670))
+	defBoxes, defBorder := makePropositionBox(def, pixel.V(895, 360), pixel.V(1435, 670))
 	allBoxes = append(allBoxes, atkBoxes...)
 	allBoxes = append(allBoxes, defBoxes...)
 

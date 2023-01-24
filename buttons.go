@@ -2,6 +2,10 @@ package main
 
 import "github.com/faiface/pixel"
 
+type decisionButtons struct {
+	buttons [2]*button
+}
+
 type button struct {
 	buttonSprs   []*pixel.Sprite
 	buttonFrames []pixel.Rect
@@ -35,6 +39,24 @@ func newButton(imgPath string, sprNum float64) button {
 	}
 }
 
+func makeDecisionButtons(gltyImgPath string, inncImgPath string, sprNum float64) decisionButtons {
+	gltyButton := newButton(gltyImgPath, sprNum)
+	inncButton := newButton(inncImgPath, sprNum)
+
+	return decisionButtons{
+		buttons: [2]*button{&gltyButton, &inncButton},
+	}
+}
+
 func (b *button) setPosition(x float64, y float64) {
 	b.rect = b.rect.Moved(pixel.V(x, y))
+}
+
+func (d decisionButtons) setPosition(x float64, y float64) {
+	gltyButton := d.buttons[0]
+	inncButton := d.buttons[1]
+	const buttonDist = 45
+
+	gltyButton.setPosition(x-gltyButton.rect.W()-buttonDist, y-(gltyButton.rect.H()/2))
+	inncButton.setPosition(x+buttonDist, y-(gltyButton.rect.H()/2))
 }
