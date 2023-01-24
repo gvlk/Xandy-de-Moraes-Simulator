@@ -1,3 +1,4 @@
-# ling_prog_jogo
+# "Xandy Moraes Simulator"
  
-![snapshot](images/snapshot.png)
+![snapshot](images/snapshot1.png)
+![snapshot](images/snapshot2.png)
