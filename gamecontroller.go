@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
@@ -13,75 +14,113 @@ func gameControl(win *pixelgl.Window) {
 
 	setDebugWindow(win)
 
-	//teste := pixelgl.NewCanvas(win.Bounds())
-	//teste.SetFragmentShader(fragmentShader)
-
 	backgroundPic := loadPicture("images/sprites/cenario01.png")
 	backgroundSpr := pixel.NewSprite(backgroundPic, backgroundPic.Bounds())
+	shadePic := loadPicture("images/sprites/preto_60.png")
+	shadeSpr := pixel.NewSprite(shadePic, shadePic.Bounds())
 
-	casoTexto, casoRect := makeTextBox("txt/cases.txt", pixel.V(500, 300), pixel.V(1000, 530))
-	clickTexts1, clickRect1 := makeMultiClickTextBox("txt/teste.txt", pixel.V(70, 100), pixel.V(160, 250))
-	clickTexts2, clickRect2 := makeMultiClickTextBox("txt/teste.txt", pixel.V(1200, 100), pixel.V(1290, 250))
+	caseTextBox := makeTextBox(
+		"txt/cases.txt",
+		pixel.V(win.Bounds().W()*(0.2), win.Bounds().H()*(1.0/30.0)),
+		pixel.V(win.Bounds().W()*(0.8), win.Bounds().H()*(29.0/30.0)))
+	propositionBoxes := makePropositionBoxes("txt/propositions.txt")
+
+	botao := newButton("images/sprites/doc.png", 2)
+	botao.setPosition(220, 50)
+
+	var hoverButtons []*button
+	hoverButtons = append(hoverButtons, &botao)
 
 	fps := time.Tick(time.Second / 60)
+	framesC := 0
+	frames := 0
+	second := time.Tick(time.Second)
 	imd := imdraw.New(nil)
 	imd.Color = colornames.Red
+
 	// main loop
+	var (
+		mousePos           pixel.Vec
+		screenCenterMatrix = pixel.IM.Moved(win.Bounds().Center())
+		readingCaseTextBox = true
+	)
+
 	for !win.Closed() {
 
-		mousePos := win.MousePosition()
+		mousePos = win.MousePosition()
 
 		//events
 		if win.JustPressed(pixelgl.MouseButtonLeft) {
-			for i := range clickTexts1 {
-				if clickTexts1[i].txtBox.Bounds().Contains(mousePos) {
-					clickTexts1[i].click = !clickTexts1[i].click
+			if readingCaseTextBox {
+				if !caseTextBox.rect.Contains(mousePos) {
+					readingCaseTextBox = false
 				}
-			}
-			for i := range clickTexts2 {
-				if clickTexts2[i].txtBox.Bounds().Contains(mousePos) {
-					clickTexts2[i].click = !clickTexts2[i].click
+			} else {
+				if botao.rect.Contains(mousePos) {
+					readingCaseTextBox = true
+					botao.state = 0
+				} else {
+					for i := range propositionBoxes.allBoxes {
+						if propositionBoxes.allBoxes[i].txtBox.Bounds().Contains(mousePos) {
+							propositionBoxes.allBoxes[i].click = !propositionBoxes.allBoxes[i].click
+						}
+					}
 				}
 			}
 		}
 
-		//tick
+		//draw
 		win.Clear(colornames.Whitesmoke)
-		backgroundSpr.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+		backgroundSpr.Draw(win, screenCenterMatrix)
 
-		displayDebug("MousePos = "+mousePos.String(), 0)
-		displayDebug("clickTexts1[0].click = "+strconv.FormatBool(clickTexts1[0].click), 1)
-
-		casoTexto.Draw(win, pixel.IM)
-		casoRect.Draw(win)
-		for _, clickText := range clickTexts1 {
+		for _, clickText := range propositionBoxes.allBoxes {
 			clickText.txtBox.Draw(win, pixel.IM)
 		}
-		for _, clickText := range clickTexts2 {
-			clickText.txtBox.Draw(win, pixel.IM)
+
+		propositionBoxes.atkBorder.Draw(win)
+		propositionBoxes.defBorder.Draw(win)
+		botao.buttonSprs[botao.state].Draw(win, pixel.IM.Moved(botao.rect.Center()))
+
+		if readingCaseTextBox {
+			shadeSpr.Draw(win, screenCenterMatrix)
+			caseTextBox.border.Draw(win)
+			caseTextBox.bg.Draw(win)
+			caseTextBox.txt.Draw(win, pixel.IM)
 		}
-		clickRect1.Draw(win)
-		clickRect2.Draw(win)
 
 		//hover
-		for _, clickText := range clickTexts1 {
-			if clickText.txtBox.Bounds().Contains(mousePos) || clickText.click {
-				imd.Clear()
-				imd.Push(clickText.txtBox.Bounds().Min, clickText.txtBox.Bounds().Max)
-				imd.Rectangle(0)
-				imd.Draw(win)
+		if !readingCaseTextBox {
+			for _, prop := range propositionBoxes.allBoxes {
+				if prop.txtBox.Bounds().Contains(mousePos) || prop.click {
+					imd.Clear()
+					imd.Push(prop.txtBox.Bounds().Min, prop.txtBox.Bounds().Max)
+					imd.Rectangle(0)
+					imd.Draw(win)
+				}
 			}
-		}
-		for _, clickText := range clickTexts2 {
-			if clickText.txtBox.Bounds().Contains(mousePos) || clickText.click {
-				imd.Clear()
-				imd.Push(clickText.txtBox.Bounds().Min, clickText.txtBox.Bounds().Max)
-				imd.Rectangle(0)
-				imd.Draw(win)
+			for _, button_ := range hoverButtons {
+				if button_.rect.Contains(mousePos) {
+					button_.state = 1
+				} else {
+					button_.state = 0
+				}
 			}
 		}
 
+		displayDebug("MousePos = "+mousePos.String(), 0)
+		displayDebug(fmt.Sprintf("FPS = %d", frames), 1)
+		displayDebug("readingCaseTextBox = "+strconv.FormatBool(readingCaseTextBox), 2)
+
 		win.Update()
+
+		//fps
+		framesC++
+		select {
+		case <-second:
+			frames = framesC
+			framesC = 0
+		default:
+		}
 		<-fps
 	}
 }
