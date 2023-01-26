@@ -14,10 +14,10 @@ import (
 )
 
 var (
+	face32pt      = loadTTF("fonts/upheavtt.ttf", 32)
+	textAtlas32pt = text.NewAtlas(face32pt, text.ASCII, text.RangeTable(unicode.Latin))
 	face38pt      = loadTTF("fonts/upheavtt.ttf", 38)
 	textAtlas38pt = text.NewAtlas(face38pt, text.ASCII, text.RangeTable(unicode.Latin))
-	face24pt      = loadTTF("fonts/upheavtt.ttf", 24)
-	textAtlas24pt = text.NewAtlas(face24pt, text.ASCII, text.RangeTable(unicode.Latin))
 	face70pt      = loadTTF("fonts/upheavtt.ttf", 70)
 	textAtlas70pt = text.NewAtlas(face70pt, text.ASCII, text.RangeTable(unicode.Latin))
 )
@@ -35,13 +35,20 @@ type propositionBoxes struct {
 	atk       []clickableTxtBox
 	def       []clickableTxtBox
 	atkBorder *imdraw.IMDraw
+	atkBg     *imdraw.IMDraw
 	defBorder *imdraw.IMDraw
+	defBg     *imdraw.IMDraw
 	allBoxes  []clickableTxtBox
+	atkRect   pixel.Rect
+	defRect   pixel.Rect
+	atkShow   bool
+	defShow   bool
 }
 
 type clickableTxtBox struct {
 	txtStates [2]*text.Text
 	state     *text.Text
+	rect      pixel.Rect
 	click     bool
 	trueProp  bool
 }
@@ -58,10 +65,10 @@ func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) (standardTxtB
 	textBorder.Push(min, max)
 	textBorder.Rectangle(5)
 
-	textBG := imdraw.New(nil)
-	textBG.Color = colornames.Whitesmoke
-	textBG.Push(min.Add(pixel.V(2, 2)), max.Sub(pixel.V(2, 2)))
-	textBG.Rectangle(0)
+	textBg := imdraw.New(nil)
+	textBg.Color = colornames.Whitesmoke
+	textBg.Push(min.Add(pixel.V(2, 2)), max.Sub(pixel.V(2, 2)))
+	textBg.Rectangle(0)
 
 	data, err := os.ReadFile(txtFileName)
 	if err != nil {
@@ -105,7 +112,7 @@ func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) (standardTxtB
 	return standardTxtBox{
 		txt:    textBox,
 		border: textBorder,
-		bg:     textBG,
+		bg:     textBg,
 		rect:   pixel.R(min.X, min.Y, max.X, max.Y),
 	}, guilty
 }
@@ -127,8 +134,8 @@ func makePropositionBox(propositions [][]string, min pixel.Vec, max pixel.Vec) (
 	boxBorder.Rectangle(5)
 
 	for _, proposition := range propositions {
-		mainTextBox = text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas24pt.LineHeight())), textAtlas24pt)
-		secuTextBox = text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas24pt.LineHeight())), textAtlas24pt)
+		mainTextBox = text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas32pt.LineHeight())), textAtlas32pt)
+		secuTextBox = text.New(pixel.V(min.X+10, max.Y-(linesUsed*textAtlas32pt.LineHeight())), textAtlas32pt)
 		mainTextBox.Color = colornames.Black
 		secuTextBox.Color = colornames.Orangered
 		for j, word := range proposition {
@@ -144,7 +151,7 @@ func makePropositionBox(propositions [][]string, min pixel.Vec, max pixel.Vec) (
 			mainTextBox.WriteString(word + " ")
 			secuTextBox.WriteString(word + " ")
 		}
-		linesUsed += 0.3
+		linesUsed += 0.8
 		textBoxes = append(textBoxes, clickableTxtBox{
 			txtStates: [2]*text.Text{mainTextBox, secuTextBox},
 			state:     mainTextBox,
@@ -157,7 +164,7 @@ func makePropositionBox(propositions [][]string, min pixel.Vec, max pixel.Vec) (
 	return textBoxes, boxBorder
 }
 
-func makePropositionBoxes(txtFileName string) propositionBoxes {
+func makePropositionBoxes(txtFileName string, min pixel.Vec, max pixel.Vec) propositionBoxes {
 	data, err := os.ReadFile(txtFileName)
 	if err != nil {
 		panic(err)
@@ -194,17 +201,33 @@ func makePropositionBoxes(txtFileName string) propositionBoxes {
 		}
 	}
 
-	atkBoxes, atkBorder := makePropositionBox(atk, pixel.V(40, 360), pixel.V(580, 670))
-	defBoxes, defBorder := makePropositionBox(def, pixel.V(895, 360), pixel.V(1435, 670))
+	atkBoxes, atkBorder := makePropositionBox(atk, min, max)
+	defBoxes, defBorder := makePropositionBox(def, pixel.V(sWidth-max.X, min.Y), pixel.V(sWidth, max.Y))
 	allBoxes = append(allBoxes, atkBoxes...)
 	allBoxes = append(allBoxes, defBoxes...)
+
+	atkBg := imdraw.New(nil)
+	atkBg.Color = pixel.RGBA{R: 0.97, G: 0.97, B: 0.97, A: 0.97}
+	atkBg.Push(min.Add(pixel.V(2, 2)), max.Sub(pixel.V(2, 2)))
+	atkBg.Rectangle(0)
+
+	defBg := imdraw.New(nil)
+	defBg.Color = pixel.RGBA{R: 0.97, G: 0.97, B: 0.97, A: 0.97}
+	defBg.Push(pixel.V(sWidth-max.X, min.Y).Add(pixel.V(2, 2)), pixel.V(sWidth, max.Y).Sub(pixel.V(2, 2)))
+	defBg.Rectangle(0)
 
 	return propositionBoxes{
 		atk:       atkBoxes,
 		def:       defBoxes,
 		atkBorder: atkBorder,
+		atkBg:     atkBg,
 		defBorder: defBorder,
+		defBg:     defBg,
 		allBoxes:  allBoxes,
+		atkRect:   pixel.R(min.X, min.Y, max.X, max.Y),
+		defRect:   pixel.R(sWidth-max.X, min.Y, sWidth, max.Y),
+		atkShow:   false,
+		defShow:   false,
 	}
 }
 
