@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/text"
@@ -46,14 +47,21 @@ type propositionBoxes struct {
 }
 
 type clickableTxtBox struct {
-	txtStates [2]*text.Text
-	state     *text.Text
+	txtStates [2]text.Text
+	state     **text.Text
 	rect      pixel.Rect
 	click     bool
 	trueProp  bool
 }
 
-func makeTextBox(txtFileName string, min pixel.Vec, max pixel.Vec) (standardTxtBox, bool) {
+type endScreenText struct {
+	uText         *text.Text
+	bText         *text.Text
+	uTextToCenter pixel.Matrix
+	bTextToCenter pixel.Matrix
+}
+
+func makeInfoText(txtFileName string, min pixel.Vec, max pixel.Vec) (standardTxtBox, bool) {
 
 	var (
 		guilty = true
@@ -153,8 +161,8 @@ func makePropositionBox(propositions [][]string, min pixel.Vec, max pixel.Vec) (
 		}
 		linesUsed += 0.8
 		textBoxes = append(textBoxes, clickableTxtBox{
-			txtStates: [2]*text.Text{mainTextBox, secuTextBox},
-			state:     mainTextBox,
+			txtStates: [2]text.Text{*mainTextBox, *secuTextBox},
+			state:     &mainTextBox,
 			click:     false,
 			trueProp:  trueProp,
 		})
@@ -229,6 +237,42 @@ func makePropositionBoxes(txtFileName string, min pixel.Vec, max pixel.Vec) prop
 		atkShow:   false,
 		defShow:   false,
 	}
+}
+
+func endGame(w bool, t int, b []clickableTxtBox) endScreenText {
+
+	var (
+		uText    = text.New(sCenter, textAtlas70pt)
+		bText    = text.New(sCenter, textAtlas70pt)
+		hitProps int
+		acc      int
+	)
+
+	if w {
+		uText.Color = colornames.Green
+		uText.WriteString("GANHOU")
+	} else {
+		uText.Color = colornames.Red
+		uText.WriteString("PERDEU")
+	}
+
+	for _, prop := range b {
+		if (prop.trueProp && prop.click) || (!prop.trueProp && !prop.click) {
+			hitProps++
+		}
+	}
+
+	acc = int((float64(hitProps) / float64(t)) * 100)
+	bText.Color = colornames.Black
+	bText.WriteString(fmt.Sprintf("%v%% DE ACERTO", acc))
+
+	return endScreenText{
+		uText:         uText,
+		bText:         bText,
+		uTextToCenter: pixel.IM.Moved(pixel.V(-uText.Bounds().W()/2, (-uText.Bounds().H()/2)+(uText.LineHeight/2))),
+		bTextToCenter: pixel.IM.Moved(pixel.V(-bText.Bounds().W()/2, (-bText.Bounds().H()/2)-(uText.LineHeight/2))),
+	}
+
 }
 
 func loadTTF(path string, size float64) font.Face {

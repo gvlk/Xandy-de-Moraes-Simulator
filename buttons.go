@@ -7,56 +7,40 @@ type decisionButtons struct {
 }
 
 type button struct {
-	buttonSprs   []*pixel.Sprite
-	buttonFrames []pixel.Rect
-	rect         pixel.Rect
-	state        int
+	buttonSprs []*pixel.Sprite
+	spr        **pixel.Sprite
+	rect       pixel.Rect
 }
 
-func newButton(imgPath string, sprNum float64) button {
+func newButton(pic pixel.Picture, min pixel.Vec, sprNum float64) button {
 
 	var (
-		spritesheet  = loadPicture(imgPath)
 		buttonSprs   []*pixel.Sprite
 		buttonFrames []pixel.Rect
-		sprLength    = spritesheet.Bounds().W() / sprNum
-		sprHeight    = spritesheet.Bounds().H()
+		sprLength    = pic.Bounds().W() / sprNum
+		sprHeight    = pic.Bounds().H()
 	)
 
-	for x := spritesheet.Bounds().Min.X; x < spritesheet.Bounds().Max.X; x += sprLength {
+	for x := pic.Bounds().Min.X; x < pic.Bounds().Max.X; x += sprLength {
 		buttonFrames = append(buttonFrames, pixel.R(x, 0, x+sprLength, sprHeight))
 	}
 	for x := 0; x < int(sprNum); x++ {
-		buttonSpr := pixel.NewSprite(spritesheet, buttonFrames[x])
+		buttonSpr := pixel.NewSprite(pic, buttonFrames[x])
 		buttonSprs = append(buttonSprs, buttonSpr)
 	}
 
 	return button{
-		buttonSprs:   buttonSprs,
-		buttonFrames: buttonFrames,
-		rect:         buttonFrames[0],
-		state:        0,
+		buttonSprs: buttonSprs,
+		spr:        &buttonSprs[0],
+		rect:       buttonFrames[0].Moved(min),
 	}
 }
 
-func makeDecisionButtons(gltyImgPath string, inncImgPath string, sprNum float64) decisionButtons {
-	gltyButton := newButton(gltyImgPath, sprNum)
-	inncButton := newButton(inncImgPath, sprNum)
+func makeDecisionButtons(gltyPic pixel.Picture, inncPic pixel.Picture, center pixel.Vec, sprNum float64) decisionButtons {
+	gltyButton := newButton(gltyPic, pixel.V(center.X-gltyPic.Bounds().W()-45, center.Y-(gltyPic.Bounds().H()/2)), sprNum)
+	inncButton := newButton(inncPic, pixel.V(center.X+45, center.Y-(inncPic.Bounds().H()/2)), sprNum)
 
 	return decisionButtons{
 		buttons: [2]*button{&gltyButton, &inncButton},
 	}
-}
-
-func (b *button) setPosition(x float64, y float64) {
-	b.rect = b.rect.Moved(pixel.V(x, y))
-}
-
-func (d decisionButtons) setPosition(x float64, y float64) {
-	gltyButton := d.buttons[0]
-	inncButton := d.buttons[1]
-	const buttonDist = 45
-
-	gltyButton.setPosition(x-gltyButton.rect.W()-buttonDist, y-(gltyButton.rect.H()/2))
-	inncButton.setPosition(x+buttonDist, y-(gltyButton.rect.H()/2))
 }
